@@ -1,0 +1,42 @@
+clear all
+close all
+pairRate = 1E7;
+eff = 0.1;
+darkC_ppix = 200;
+numpix = 512;
+frameRate = 96E3;
+frameT = 1/frameRate *1E9; %in ns
+
+transPairs_psec = pairRate *eff^2;
+transAccSingles_psec = pairRate *(eff-eff^2);
+darkCSingles_psec = numpix * darkC_ppix;
+
+gateWin = 2:0.25:5;
+for gateCounter = 1:length(gateWin)
+    dutyCycle = gateWin(gateCounter)/frameT;
+    
+    %probabilities are per frame:
+    prob_realCoinc = dutyCycle*transPairs_psec/frameRate;
+    prob_accSingle = dutyCycle*transAccSingles_psec/frameRate;
+    prob_accCoinc = prob_accSingle^2;
+    
+    CAR(gateCounter) = prob_realCoinc/prob_accCoinc;
+    
+    prob_darkCSingle = dutyCycle*darkCSingles_psec/frameRate;
+    prob_triple = prob_darkCSingle*prob_realCoinc;
+    prob_darkAccCoinc = 2* prob_darkCSingle*prob_accSingle;
+    
+    prob_validPair = prob_realCoinc - prob_triple;
+    prob_noiseCoinc = prob_accCoinc + prob_darkAccCoinc;
+    
+    SNR(gateCounter) = prob_validPair/prob_noiseCoinc;
+    
+    validPairRate(gateCounter) = prob_validPair * frameRate;
+end
+figure(1)
+subplot(1,2,1)
+hold on
+plot(gateWin,CAR);
+plot(gateWin,SNR,'r');
+subplot(1,2,2)
+plot(gateWin,validPairRate);
